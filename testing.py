@@ -9,7 +9,7 @@ file = open(file="Kraków_data.csv", mode="r")
 data_kraków = file.read()
 file.close()
 
-data_kraków = data_kraków.split()[8:-365:]
+data_kraków = data_kraków.split()[-365::]
 print(len(data_kraków))
 timestamps = [str(day.split(",")[0]) for day in data_kraków]
 data_kraków = [[float(val) for val in (day.split(",")[1::])] for day in data_kraków]
@@ -19,7 +19,7 @@ file = open(file="Rzeszów_data.csv", mode="r")
 data_rzeszów = file.read()
 file.close()
 
-data_rzeszów = data_rzeszów.split()[8:-365:]
+data_rzeszów = data_rzeszów.split()[-365::]
 data_rzeszów = [[float(val) for val in (day.split(",")[1::])] for day in data_rzeszów]
 
 # Warszawa
@@ -27,7 +27,7 @@ file = open(file="Warszawa_data.csv", mode="r")
 data_warszawa = file.read()
 file.close()
 
-data_warszawa = data_warszawa.split()[8:-365:]
+data_warszawa = data_warszawa.split()[-365::]
 data_warszawa = [[float(val) for val in (day.split(",")[1::])] for day in data_warszawa]
 
 # Praga
@@ -35,12 +35,14 @@ file = open(file="Prague_data.csv", mode="r")
 data_prague = file.read()
 file.close()
 
-data_prague = data_prague.split()[8:-365:]
+data_prague = data_prague.split()[-365::]
 data_prague = [[float(val) for val in (day.split(",")[1::])] for day in data_prague]
 
 # Combine data
-data = [data_kraków[i] + data_rzeszów[i] + data_warszawa[i] + data_prague[i] for i in range(len(data_kraków))]
+dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+data = torch.tensor([data_kraków[i] + data_rzeszów[i] + data_warszawa[i] + data_prague[i] for i in range(len(data_kraków))], device=dev)
 print(data[0])
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -77,31 +79,33 @@ class Net(nn.Module):
         return x
     
 
-model = torch.load("model.pt")
+model = torch.load("model.pt").to(dev)
 days_n = 14
 
 diffs = []
 good = 0
 for day in range(len(data) - days_n):
     day_id = day
-    inputs = torch.tensor(data[day_id:day_id + days_n], dtype=torch.float32)
+    inputs = data[day_id:day_id + days_n]
     outputs = model.forward(inputs)
-    target = torch.tensor([data[day_id + days_n]])
+    target = data[day_id + days_n]
     diff = torch.abs(target - outputs)
-    if diff[0][2] < 3:
+    if diff[2] < 1:
         good += 1
-    diffs.append(float(diff[0][2]))
+    diffs.append(float(diff[2]))
     
+plt.hist(diffs, bins=20, density=True)
+plt.show()
 print(numpy.std(diffs))
 print(numpy.quantile(diffs, q = [0.25, 0.5, 0.75, 0.9]))
 print(good / (len(data) - days_n))
 
 while 2137:
     day_id = torch.randint(0, len(data) - days_n, (1, ))
-    inputs = torch.tensor(data[day_id:day_id + days_n], dtype=torch.float32)
+    inputs = data[day_id:day_id + days_n]
     outputs = model.forward(inputs)
+    target = data[day_id + days_n]
     print("prediction:", outputs)
-    target = torch.tensor([data[day_id + days_n]])
     print("real:", target)
     diff = target - outputs
     print("difference:", diff[0])
