@@ -38,7 +38,8 @@ data_prague = data_prague.split()[8:-365:]
 data_prague = [[float(val) for val in (day.split(",")[1::])] for day in data_prague]
 
 # Combine data
-data = [data_kraków[i] + data_rzeszów[i] + data_warszawa[i] + data_prague[i] for i in range(len(data_kraków))]
+dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+data = torch.tensor([data_kraków[i] + data_rzeszów[i] + data_warszawa[i] + data_prague[i] for i in range(len(data_kraków))], device=dev)
 print(data[0])
 
 # neural network
@@ -46,7 +47,7 @@ days_n = 14
 features_n = 5
 cities_n = 4
 input_n = days_n * features_n * cities_n
-hidden_n = 512
+hidden_n = 32
 output_n = features_n * cities_n
 
 class Net(nn.Module):
@@ -58,6 +59,10 @@ class Net(nn.Module):
         self.hidden_layer2 = nn.Linear(hidden_n, hidden_n)
         self.hidden_layer3 = nn.Linear(hidden_n, hidden_n)
         self.hidden_layer4 = nn.Linear(hidden_n, hidden_n)
+        self.hidden_layer5 = nn.Linear(hidden_n, hidden_n)
+        self.hidden_layer6 = nn.Linear(hidden_n, hidden_n)
+        self.hidden_layer7 = nn.Linear(hidden_n, hidden_n)
+        self.hidden_layer8 = nn.Linear(hidden_n, hidden_n)
         self.output_layer = nn.Linear(hidden_n, output_n)
 
     def forward(self, x):
@@ -79,12 +84,26 @@ class Net(nn.Module):
         x = self.hidden_layer4(x)
         x += skip
         x = activation(x)
+        
+        skip = x
+        x = self.hidden_layer5(x)
+        x = activation(x)
+        x = self.hidden_layer6(x)
+        x += skip
+        x = activation(x)
+        
+        skip = x
+        x = self.hidden_layer7(x)
+        x = activation(x)
+        x = self.hidden_layer8(x)
+        x += skip
+        x = activation(x)
 
         x = self.output_layer(x)
         return x
     
 
-model = Net()
+model = Net().to(dev)
 
 optimizer = torch.optim.SGD(model.parameters(), lr = 0.00001, momentum=0.9)
 criterion = nn.MSELoss()
@@ -95,9 +114,9 @@ rounds_n = 1000000
 small_round_n = 5000
 for i in range(rounds_n):
     day_id = torch.randint(0, len(data) - days_n, (1, ))
-    inputs = torch.tensor(data[day_id:day_id + days_n], dtype=torch.float32)
+    inputs = data[day_id:day_id + days_n]
     outputs = model.forward(inputs)
-    target = torch.tensor([data[day_id + days_n]])
+    target = data[day_id + days_n]
 
     optimizer.zero_grad()
     loss = criterion(outputs, target)
