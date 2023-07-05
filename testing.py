@@ -1,112 +1,55 @@
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+import location_data
 import matplotlib.pyplot as plt
-import time
-import numpy
 
-# Kraków
-file = open(file="Kraków_data.csv", mode="r")
-data_kraków = file.read()
-file.close()
+timestamps, datasets = location_data.get_all_locations(filenames=
+                                ["./locations/Kraków_[PL].csv", 
+                                 "./locations/Katowice_[PL].csv", 
+                                 "./locations/Kielce_[PL].csv", 
+                                 "./locations/Nowy_Sącz_[PL].csv"])
 
-data_kraków = data_kraków.split()[-365::]
-print(len(data_kraków))
-timestamps = [str(day.split(",")[0]) for day in data_kraków]
-data_kraków = [[float(val) for val in (day.split(",")[1::])] for day in data_kraków]
-
-# Rzeszów
-file = open(file="Rzeszów_data.csv", mode="r")
-data_rzeszów = file.read()
-file.close()
-
-data_rzeszów = data_rzeszów.split()[-365::]
-data_rzeszów = [[float(val) for val in (day.split(",")[1::])] for day in data_rzeszów]
-
-# Warszawa
-file = open(file="Warszawa_data.csv", mode="r")
-data_warszawa = file.read()
-file.close()
-
-data_warszawa = data_warszawa.split()[-365::]
-data_warszawa = [[float(val) for val in (day.split(",")[1::])] for day in data_warszawa]
-
-# Praga
-file = open(file="Prague_data.csv", mode="r")
-data_prague = file.read()
-file.close()
-
-data_prague = data_prague.split()[-365::]
-data_prague = [[float(val) for val in (day.split(",")[1::])] for day in data_prague]
-
-# Combine data
-dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-data = torch.tensor([data_kraków[i] + data_rzeszów[i] + data_warszawa[i] + data_prague[i] for i in range(len(data_kraków))], device=dev)
-print(data[0])
-
-
-class Net(nn.Module):
-    def __init__(self):
-        hidden_n = 0
-        super(Net, self).__init__()
-        self.input_layer = nn.Linear(input_n, hidden_n)
-        self.hidden_layer1 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer2 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer3 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer4 = nn.Linear(hidden_n, hidden_n)
-        self.output_layer = nn.Linear(hidden_n, output_n)
-
-    def forward(self, x):
-        activation = nn.LeakyReLU()
-        x = nn.Flatten(start_dim=0)(x)
-        x = self.input_layer(x)
-        x = activation(x)
-
-        skip = x
-        x = self.hidden_layer1(x)
-        x = activation(x)
-        x = self.hidden_layer2(x)
-        x += skip
-        x = activation(x)
+class Weather_Dataset(Dataset):
+    def __init__(self, data, training=True):
+        super().__init__()
+        l = (len(datasets))
+        split_id = int(l * 0.7)
         
-        skip = x
-        x = self.hidden_layer3(x)
-        x = activation(x)
-        x = self.hidden_layer4(x)
-        x += skip
-        x = activation(x)
+        if training:
+            self.samples = data[0:split_id]
+        else:
+            self.samples = data[split_id:]
 
-        x = self.output_layer(x)
-        return x
+
+    def __getitem__(self, index):
+        input_days = torch.tensor(self.samples[index : index + 24])
+        days_to_predict = torch.tensor(self.samples[index + 24 : index + 48])
+        return input_days, days_to_predict
+
+    def __len__(self):
+        return len(self.samples) - 50
     
 
-model = torch.load("model.pt").to(dev)
-days_n = 14
+training_dataset = Weather_Dataset(datasets, training=False)
+training_loader = DataLoader(
+    dataset=training_dataset,
+    batch_size=1,
+    shuffle=False)
 
-diffs = []
-good = 0
-for day in range(len(data) - days_n):
-    day_id = day
-    inputs = data[day_id:day_id + days_n]
-    outputs = model.forward(inputs)
-    target = data[day_id + days_n]
-    diff = torch.abs(target - outputs)
-    if diff[2] < 1:
-        good += 1
-    diffs.append(float(diff[2]))
-    
-plt.hist(diffs, bins=20, density=True)
+model = torch.load(f="model.pt")
+criterion = nn.MSELoss()
+
+loss_sum = 0
+i = 0
+diff = []
+i = 0
+for data_in, target in iter(training_loader):
+    prediction = model.forward(data_in)
+    loss = criterion(target, prediction)
+    diff.append(float(target[0][23][0] - prediction[0][23][0]))
+    i += 1
+    print(i)
+
+plt.hist(diff, bins=40)
 plt.show()
-print(numpy.std(diffs))
-print(numpy.quantile(diffs, q = [0.25, 0.5, 0.75, 0.9]))
-print(good / (len(data) - days_n))
-
-while 2137:
-    day_id = torch.randint(0, len(data) - days_n, (1, ))
-    inputs = data[day_id:day_id + days_n]
-    outputs = model.forward(inputs)
-    target = data[day_id + days_n]
-    print("prediction:", outputs)
-    print("real:", target)
-    diff = target - outputs
-    print("difference:", diff[0])
-    input()

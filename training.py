@@ -1,132 +1,75 @@
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
+from torch.utils.data import Dataset, DataLoader
+import location_data
+import learning_time_est as lte
 import time
 
-# Kraków
-file = open(file="Kraków_data.csv", mode="r")
-data_kraków = file.read()
-file.close()
+timestamps, datasets = location_data.get_all_locations(filenames=
+                                ["./locations/Kraków_[PL].csv", 
+                                 "./locations/Katowice_[PL].csv", 
+                                 "./locations/Kielce_[PL].csv", 
+                                 "./locations/Nowy_Sącz_[PL].csv"])
 
-data_kraków = data_kraków.split()[8:-365:]
-print(len(data_kraków))
-timestamps = [str(day.split(",")[0]) for day in data_kraków]
-data_kraków = [[float(val) for val in (day.split(",")[1::])] for day in data_kraków]
-
-# Rzeszów
-file = open(file="Rzeszów_data.csv", mode="r")
-data_rzeszów = file.read()
-file.close()
-
-data_rzeszów = data_rzeszów.split()[8:-365:]
-data_rzeszów = [[float(val) for val in (day.split(",")[1::])] for day in data_rzeszów]
-
-# Warszawa
-file = open(file="Warszawa_data.csv", mode="r")
-data_warszawa = file.read()
-file.close()
-
-data_warszawa = data_warszawa.split()[8:-365:]
-data_warszawa = [[float(val) for val in (day.split(",")[1::])] for day in data_warszawa]
-
-# Praga
-file = open(file="Prague_data.csv", mode="r")
-data_prague = file.read()
-file.close()
-
-data_prague = data_prague.split()[8:-365:]
-data_prague = [[float(val) for val in (day.split(",")[1::])] for day in data_prague]
-
-# Combine data
-dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-data = torch.tensor([data_kraków[i] + data_rzeszów[i] + data_warszawa[i] + data_prague[i] for i in range(len(data_kraków))], device=dev)
-print(data[0])
-
-# neural network
-days_n = 14
-features_n = 5
-cities_n = 4
-input_n = days_n * features_n * cities_n
-hidden_n = 32
-output_n = features_n * cities_n
-
-class Net(nn.Module):
-
-    def __init__(self):
-        super(Net, self).__init__()
-        self.input_layer = nn.Linear(input_n, hidden_n)
-        self.hidden_layer1 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer2 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer3 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer4 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer5 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer6 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer7 = nn.Linear(hidden_n, hidden_n)
-        self.hidden_layer8 = nn.Linear(hidden_n, hidden_n)
-        self.output_layer = nn.Linear(hidden_n, output_n)
-
-    def forward(self, x):
-        activation = nn.LeakyReLU()
-        x = nn.Flatten(start_dim=0)(x)
-        x = self.input_layer(x)
-        x = activation(x)
-
-        skip = x
-        x = self.hidden_layer1(x)
-        x = activation(x)
-        x = self.hidden_layer2(x)
-        x += skip
-        x = activation(x)
+class Weather_Dataset(Dataset):
+    def __init__(self, data, training=True):
+        super().__init__()
+        l = (len(datasets))
+        split_id = int(l * 0.7)
         
-        skip = x
-        x = self.hidden_layer3(x)
-        x = activation(x)
-        x = self.hidden_layer4(x)
-        x += skip
-        x = activation(x)
-        
-        skip = x
-        x = self.hidden_layer5(x)
-        x = activation(x)
-        x = self.hidden_layer6(x)
-        x += skip
-        x = activation(x)
-        
-        skip = x
-        x = self.hidden_layer7(x)
-        x = activation(x)
-        x = self.hidden_layer8(x)
-        x += skip
-        x = activation(x)
+        if training:
+            self.samples = data[0:split_id]
+        else:
+            self.samples = data[split_id:]
 
-        x = self.output_layer(x)
-        return x
+
+    def __getitem__(self, index):
+        input_days = torch.tensor(self.samples[index : index + 24])
+        days_to_predict = torch.tensor(self.samples[index + 24 : index + 48])
+        return input_days, days_to_predict
+
+    def __len__(self):
+        return len(self.samples) - 50
     
 
-model = Net().to(dev)
+training_dataset = Weather_Dataset(datasets)
+training_loader = DataLoader(
+    dataset=training_dataset,
+    batch_size=128,
+    shuffle=True)
 
-optimizer = torch.optim.SGD(model.parameters(), lr = 0.00001, momentum=0.9)
+dev = torch.device("cpu")
+model = nn.Sequential(
+    nn.Linear(12, 64),
+    nn.LeakyReLU(),
+    nn.Linear(64, 64),
+    nn.LeakyReLU(),
+    nn.Linear(64, 12)
+).to(device=dev)
+
 criterion = nn.MSELoss()
+optimizer = torch.optim.SGD(params=model.parameters(), lr=1e-3, momentum=0.9)
+
+epoch_n = 10
+
 t0 = time.time()
 
-loss_sum = 0
-rounds_n = 1000000
-small_round_n = 5000
-for i in range(rounds_n):
-    day_id = torch.randint(0, len(data) - days_n, (1, ))
-    inputs = data[day_id:day_id + days_n]
-    outputs = model.forward(inputs)
-    target = data[day_id + days_n]
+for epoch in range(1, epoch_n + 1):
+    loss_sum = 0
+    i = 0
+    for data_in, target in iter(training_loader):
+        data_in = data_in.to(dev)
+        target = target.to(dev)
+        prediction = model.forward(data_in)
 
-    optimizer.zero_grad()
-    loss = criterion(outputs, target)
-    loss.backward()
-    optimizer.step()
-    loss_sum += loss
+        optimizer.zero_grad()
+        loss = criterion(target, prediction)
+        loss.backward()
+        optimizer.step()
+        loss_sum += loss
+        i += 1
 
-    if i % small_round_n == 0:
-        print("Progres:", i / rounds_n, "Loss:", loss_sum / small_round_n)
-        loss_sum = 0
+    print("\nmean loss:", float(loss_sum / i))
+    lte.show_time(start_timestamp=t0, progres=epoch/epoch_n)
 
-print(time.time() - t0)
-torch.save(model, "model.pt")
+torch.save(obj=model.to("cpu"), f="model.pt")
