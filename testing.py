@@ -8,12 +8,11 @@ import numpy as np
 timestamps, datasets = location_data.get_all_locations(filenames=
                                 ["./locations/Kraków_[PL].csv", 
                                  "./locations/Warsaw_[Pl].csv", 
-                                 "./locations/Katowice_[Pl].csv", 
-                                 "./locations/Kielce_[Pl].csv", 
-                                 "./locations/Nowy_Sącz[Pl].csv", 
-                                 "./locations/Lviv_[Uk].csv", 
-                                 "./locations/Prague_[Cz].csv", 
-                                 "./locations/Vienna_[A].csv"])
+                                 "./locations/Berlin_[DE].csv", 
+                                 "./locations/Budapest_[HU].csv", 
+                                 "./locations/Lviv_[UKR].csv", 
+                                 "./locations/Prague_[CZ].csv", 
+                                 "./locations/Vilnius_[LT].csv", ])
 
 class Weather_Dataset(Dataset):
     def __init__(self, data, training=True, days_n=2):
@@ -47,7 +46,7 @@ criterion = nn.MSELoss()
 
 loss_sum = 0
 diff = []
-hour_to_test = 47
+hour_to_test = 2 * 24
 for data_in, target in iter(training_loader):
     data_in = data_in.to(dev)
     target = target.to(dev)

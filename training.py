@@ -8,12 +8,11 @@ import time
 timestamps, datasets = location_data.get_all_locations(filenames=
                                 ["./locations/Kraków_[PL].csv", 
                                  "./locations/Warsaw_[Pl].csv", 
-                                 "./locations/Katowice_[Pl].csv", 
-                                 "./locations/Kielce_[Pl].csv", 
-                                 "./locations/Nowy_Sącz_[Pl].csv", 
-                                 "./locations/Lviv_[Uk].csv", 
-                                 "./locations/Prague_[Cz].csv", 
-                                 "./locations/Vienna_[A].csv"])
+                                 "./locations/Berlin_[DE].csv", 
+                                 "./locations/Budapest_[HU].csv", 
+                                 "./locations/Lviv_[UKR].csv", 
+                                 "./locations/Prague_[CZ].csv", 
+                                 "./locations/Vilnius_[LT].csv", ])
 
 class Weather_Dataset(Dataset):
     def __init__(self, data, training=True, days_n=2):
@@ -41,9 +40,9 @@ training_loader = DataLoader(
     batch_size=256,
     shuffle=True)
 
-dev = torch.device("cuda")
-locations_n = 8
-features = 3
+dev = torch.device("mps")
+locations_n = 7
+features = 6
 hours = 7 * 24
 model = nn.Sequential(
     nn.Flatten(),
@@ -62,7 +61,7 @@ model = nn.Sequential(
 criterion = nn.MSELoss()
 optimizer = torch.optim.SGD(params=model.parameters(), lr=1e-3, momentum=0.9)
 
-epoch_n = 128
+epoch_n = 8
 
 t0 = time.time()
 loss_file = open("loss.txt", mode="w")
@@ -81,7 +80,6 @@ for epoch in range(1, epoch_n + 1):
         optimizer.step()
         loss_sum += loss
         i += 1
-        print(i)
 
     print("\nmean loss:", float(loss_sum / i))
     loss_file = open("loss.txt", mode="a")

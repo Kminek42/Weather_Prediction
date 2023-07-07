@@ -6,4 +6,5 @@ file.close
 text = [float(num) for num in text]
 print(text)
 plt.plot(text)
+plt.ylim(bottom=0)
 plt.show()
