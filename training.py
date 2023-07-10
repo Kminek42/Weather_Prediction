@@ -52,7 +52,7 @@ class Weather_Dataset(Dataset):
 training_dataset = Weather_Dataset(datasets, days_n=7)
 training_loader = DataLoader(
     dataset=training_dataset,
-    batch_size=256,
+    batch_size=2048,
     shuffle=True)
 
 dev = torch.device("mps")
@@ -76,7 +76,7 @@ model = nn.Sequential(
 criterion = nn.MSELoss()
 optimizer = torch.optim.SGD(params=model.parameters(), lr=1e-2, momentum=0.9)
 
-epoch_n = 2
+epoch_n = 10
 print("checkpoint")
 t0 = time.time()
 loss_file = open("loss.txt", mode="w")
@@ -95,7 +95,6 @@ for epoch in range(1, epoch_n + 1):
         optimizer.step()
         loss_sum += loss
         i += 1
-        print(i)
 
     print("\nmean loss:", float(loss_sum / i))
     loss_file = open("loss.txt", mode="a")
