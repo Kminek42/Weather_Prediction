@@ -6,16 +6,31 @@ import learning_time_est as lte
 import time
 
 timestamps, datasets = location_data.get_all_locations(filenames=
-                                ["./locations/Kraków_[PL].csv", 
-                                 "./locations/Warsaw_[Pl].csv", 
-                                 "./locations/Berlin_[DE].csv", 
-                                 "./locations/Budapest_[HU].csv", 
-                                 "./locations/Lviv_[UKR].csv", 
-                                 "./locations/Prague_[CZ].csv", 
-                                 "./locations/Vilnius_[LT].csv", ])
+                                ["./locations/Amsterdam_[NET].csv",
+                                 "./locations/Barcelona_[SPA].csv",
+                                 "./locations/Berlin_[GER].csv",
+                                 "./locations/Bucharest_[ROM].csv",
+                                 "./locations/Budapest_[HUN].csv",
+                                 "./locations/Cologne_[GER].csv",
+                                 "./locations/Hamburg_[GER].csv",
+                                 "./locations/Kraków_[POL].csv",
+                                 "./locations/Madrid_[SPA].csv",
+                                 "./locations/Marseille_[FRA].csv",
+                                 "./locations/Milan_[ITA].csv",
+                                 "./locations/Munich_[GER].csv",
+                                 "./locations/Naples_[ITA].csv",
+                                 "./locations/Paris_[FRA].csv",
+                                 "./locations/Prague_[CZE].csv",
+                                 "./locations/Rome_[ITA].csv",
+                                 "./locations/Sofia_[BUL].csv",
+                                 "./locations/Stockholm_[SWE].csv",
+                                 "./locations/Turin_[ITA].csv",
+                                 "./locations/Vienna_[AUS].csv",
+                                 "./locations/Warsaw_[POL].csv",
+                                 ])
 
 class Weather_Dataset(Dataset):
-    def __init__(self, data, training=True, days_n=2):
+    def __init__(self, data, days_n, training=True):
         super().__init__()
         l = (len(datasets))
         split_id = int(l * 0.7)
@@ -41,28 +56,28 @@ training_loader = DataLoader(
     shuffle=True)
 
 dev = torch.device("mps")
-locations_n = 7
-features = 6
+locations_n = 21
+features = 3
 hours = 7 * 24
+
+activation = nn.Sigmoid()
 model = nn.Sequential(
     nn.Flatten(),
     nn.Linear(locations_n * features * hours, 1024),
-    nn.LeakyReLU(),
+    activation,
     nn.Linear(1024, 1024),
-    nn.LeakyReLU(),
+    activation,
     nn.Linear(1024, 1024),
-    nn.LeakyReLU(),
-    nn.Linear(1024, 1024),
-    nn.LeakyReLU(),
+    activation,
     nn.Linear(1024, locations_n * features * hours),
     nn.Unflatten(dim=1, unflattened_size=(hours, locations_n * features))
 ).to(device=dev)
 
 criterion = nn.MSELoss()
-optimizer = torch.optim.SGD(params=model.parameters(), lr=1e-3, momentum=0.9)
+optimizer = torch.optim.SGD(params=model.parameters(), lr=1e-2, momentum=0.9)
 
-epoch_n = 8
-
+epoch_n = 2
+print("checkpoint")
 t0 = time.time()
 loss_file = open("loss.txt", mode="w")
 loss_file.close()
@@ -80,6 +95,7 @@ for epoch in range(1, epoch_n + 1):
         optimizer.step()
         loss_sum += loss
         i += 1
+        print(i)
 
     print("\nmean loss:", float(loss_sum / i))
     loss_file = open("loss.txt", mode="a")
