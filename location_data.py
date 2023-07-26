@@ -4,11 +4,11 @@ def get_location_data(*, filename):
     file = open(file=filename, mode="r")
     data = file.read().split()[6:]
     file.close()
-    timestamps = [sample.split(sep=",")[0] for sample in data]
+    timestamps = [[float(num) for num in sample.split(sep=",")[0]] for sample in data]
     samples = [[float(num) for num in sample.split(sep=",")[1:]] for sample in data]
     samples = [[sample[0],  # temp
                 sample[1] / 100,  # relative hum.
-                sample[2] / 1000,  # surface pressure
+                (sample[2] - 1000) / 100,  # surface pressure
                 ] for sample in samples]
     return timestamps, samples
 
