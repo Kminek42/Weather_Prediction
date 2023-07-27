@@ -41,11 +41,11 @@ if train:
     activation = nn.ReLU()
     model = nn.Sequential(
         nn.Flatten(),
-        nn.Linear(locations_n * features * training_dataset.input_hours, 1024),
+        nn.Linear(locations_n * features * training_dataset.input_hours, 2048),
         activation,
-        nn.Linear(1024, 256),
+        nn.Linear(2048, 1024),
         activation,
-        nn.Linear(256, locations_n * features * training_dataset.output_hours),
+        nn.Linear(1024, locations_n * features * training_dataset.output_hours),
         nn.Unflatten(dim=1, unflattened_size=(locations_n * features, training_dataset.output_hours))
     ).to(device=dev)
 
