@@ -49,6 +49,11 @@ if train:
         nn.Unflatten(dim=1, unflattened_size=(locations_n * features, training_dataset.output_hours))
     ).to(device=dev)
 
+    try:
+        model = torch.load(f="model.pt").to(dev)
+    except:
+        pass
+    
     print(model)
 
     criterion = nn.MSELoss()
