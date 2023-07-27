@@ -20,7 +20,14 @@ train = True
 
 if train:
     training_dataset = wd.Weather_Dataset(input_days_n=7, output_days_n=1, training=True, split=0.5, locations=[
-        "./locations/Amsterdam_[NET].csv"
+        "./locations/Amsterdam_[NET].csv",
+        "./locations/Barcelona_[SPA].csv",
+        "./locations/Berlin_[GER].csv",
+        "./locations/Bucharest_[ROM].csv",
+        "./locations/Budapest_[HUN].csv",
+        "./locations/Cologne_[GER].csv",
+        "./locations/Hamburg_[GER].csv",
+        "./locations/Kraków_[POL].csv",
     ])
 
     training_loader = DataLoader(
@@ -28,7 +35,7 @@ if train:
         batch_size=64,
         shuffle=True)
 
-    locations_n = 1
+    locations_n = 8
     features = 3
 
     activation = nn.ReLU()
@@ -75,8 +82,15 @@ if train:
     torch.save(obj=model.to("cpu"), f="model.pt")
 
 else:
-    test_dataset = wd.Weather_Dataset(input_days_n=3, output_days_n=1, training=False, split=0.5, locations=[
-        "./locations/Amsterdam_[NET].csv"
+    test_dataset = wd.Weather_Dataset(input_days_n=7, output_days_n=1, training=False, split=0.5, locations=[
+        "./locations/Amsterdam_[NET].csv",
+        "./locations/Barcelona_[SPA].csv",
+        "./locations/Berlin_[GER].csv",
+        "./locations/Bucharest_[ROM].csv",
+        "./locations/Budapest_[HUN].csv",
+        "./locations/Cologne_[GER].csv",
+        "./locations/Hamburg_[GER].csv",
+        "./locations/Kraków_[POL].csv",
     ])
 
     training_loader = DataLoader(
